@@ -1,0 +1,268 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+from PIL import Image, ImageTk
+import os
+import json
+from movie_detail import MovieDetailWindow
+from add_movie import AddMovieWindow
+
+# 电影数据存储文件
+MOVIES_FILE = "movies.json"
+# 默认海报路径
+DEFAULT_POSTER = "posters/default.png"
+
+
+class MovieLibraryApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("影片库")
+        self.root.geometry("1200x800")
+        self.root.configure(bg="#1E1E1E")
+
+        # 创建海报目录
+        os.makedirs("posters", exist_ok=True)
+
+        # 检查默认海报是否存在，不存在则创建
+        if not os.path.exists(DEFAULT_POSTER):
+            try:
+                img = Image.new('RGB', (120, 180), color=(50, 50, 50))
+                img.save(DEFAULT_POSTER)
+            except Exception as e:
+                print(f"无法创建默认海报: {e}")
+
+        # 加载星星图片
+        STAR_EMPTY_PATH = os.path.join("posters", "star_empty.png")
+        STAR_FILLED_PATH = os.path.join("posters", "star_filled.png")
+
+        if os.path.exists(STAR_EMPTY_PATH) and os.path.exists(STAR_FILLED_PATH):
+            self.STAR_EMPTY = ImageTk.PhotoImage(Image.open(STAR_EMPTY_PATH).resize((20, 20)))
+            self.STAR_FILLED = ImageTk.PhotoImage(Image.open(STAR_FILLED_PATH).resize((20, 20)))
+        else:
+            messagebox.showerror("错误", "星星图片文件不存在，请检查路径。")
+
+        # 尝试从文件中读取电影数据
+        try:
+            with open(MOVIES_FILE, "r", encoding="utf-8") as f:
+                self.movies_data = json.load(f)
+        except FileNotFoundError:
+            # 如果文件不存在，使用默认数据
+            self.movies_data = [
+                {
+                    "title": "铁血战士：杀戮之王",
+                    "poster_path": "posters/predator.jpg",
+                    "stars": "迈克尔·比恩, 道格·科克尔",
+                    "director": "丹·特拉亨伯格",
+                    "type": "首推",
+                    "release_year": 2025,
+                    "region": "美国",
+                    "update_date": "2025-06-07",
+                    "rating": "7.1",
+                    "download_link": "",
+                    "watch_link": ""
+                },
+                {
+                    "title": "哪吒之魔童闹海",
+                    "poster_path": "posters/nezha.jpg",
+                    "stars": "吕艳婷, 囧森瑟夫",
+                    "director": "饺子",
+                    "type": "动画",
+                    "release_year": 2025,
+                    "region": "中国",
+                    "update_date": "2025-06-05",
+                    "rating": "8.6",
+                    "download_link": "",
+                    "watch_link": ""
+                }
+            ]
+
+        # 界面组件
+        self.create_ui()
+
+    def create_ui(self):
+        # 顶部操作栏 - 添加影片按钮和搜索框
+        top_bar = ttk.Frame(self.root, style="SearchFrame.TFrame")
+        top_bar.pack(pady=10, fill=tk.X, padx=20)
+
+        # 添加影片按钮
+        add_movie_btn = ttk.Button(top_bar, text="添加影片", command=self.show_add_movie_window)
+        add_movie_btn.pack(side=tk.RIGHT, padx=5)
+
+        # 搜索栏
+        search_frame = ttk.Frame(top_bar, style="SearchFrame.TFrame")
+        search_frame.pack(side=tk.RIGHT, padx=5)
+
+        self.search_entry = ttk.Entry(search_frame, width=40)
+        self.search_entry.pack(side=tk.LEFT, padx=5)
+
+        self.search_btn = ttk.Button(search_frame, text="搜索", command=self.search_movies)
+        self.search_btn.pack(side=tk.LEFT, padx=5)
+
+        # 海报墙框架
+        self.posters_frame = ttk.Frame(self.root, style="PostersFrame.TFrame")
+        self.posters_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+
+        # 加载海报
+        self.load_posters(self.movies_data)
+
+    def load_posters(self, movies):
+        # 清空现有内容
+        for widget in self.posters_frame.winfo_children():
+            widget.destroy()
+
+        # 创建一个列表来存储所有海报图片的引用，防止被垃圾回收
+        self.poster_images = []
+
+        # 重新加载所有电影海报
+        cols = 7
+        for index, movie in enumerate(movies):
+            row = index // cols
+            col = index % cols
+
+            # 使用统一的加载海报函数，确保所有海报尺寸一致
+            poster_photo = self.load_poster_image(movie["poster_path"])
+
+            if poster_photo:
+                # 创建固定大小的海报框架
+                poster_frame = ttk.Frame(self.posters_frame, style="PosterFrame.TFrame", width=130, height=270)
+                poster_frame.grid(row=row, column=col, padx=5, pady=5)
+                poster_frame.grid_propagate(False)  # 防止框架根据内容调整大小
+
+                # 创建海报容器，使用pack布局确保顶部对齐
+                image_container = ttk.Frame(poster_frame, style="PosterFrame.TFrame")
+                image_container.pack(side=tk.TOP, fill=tk.X, pady=(5, 0))
+
+                # 创建海报标签
+                poster_label = ttk.Label(image_container, image=poster_photo)
+                poster_label.image = poster_photo
+                poster_label.pack()
+
+                # 创建标题容器，使用固定高度并允许文本溢出
+                title_container = ttk.Frame(poster_frame, style="PosterFrame.TFrame", height=40)
+                title_container.pack(side=tk.TOP, fill=tk.X, pady=5)
+                title_container.pack_propagate(False)  # 防止容器根据内容调整大小
+
+                # 创建标题标签
+                title_label = ttk.Label(title_container, text=movie["title"],
+                                        style="TitleLabel.TLabel", wraplength=120)
+                title_label.pack(fill=tk.BOTH, expand=True)
+
+                # 显示评分星级
+                rating = int(float(movie["rating"])) if movie["rating"] else 0
+                stars_frame = ttk.Frame(poster_frame, style="PosterFrame.TFrame")
+                stars_frame.pack(side=tk.TOP, pady=5)
+
+                # 存储星星组件引用，用于后续更新
+                movie["star_widgets"] = []
+                for i in range(5):
+                    star_label = ttk.Label(stars_frame,
+                                           image=self.STAR_FILLED if i < rating else self.STAR_EMPTY)
+                    star_label.image = self.STAR_FILLED if i < rating else self.STAR_EMPTY
+                    star_label.pack(side=tk.LEFT)
+                    movie["star_widgets"].append(star_label)
+
+                # 绑定点击事件
+                poster_frame.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))
+                poster_label.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))
+                title_label.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))
+
+    def load_poster_image(self, poster_path):
+        """加载并统一调整海报尺寸的辅助函数"""
+        try:
+            # 检查海报路径是否存在，如果不存在则使用默认海报
+            if not poster_path or not os.path.exists(poster_path):
+                poster_path = DEFAULT_POSTER
+
+            # 打开并调整图片尺寸，使用高质量重采样，确保模式为RGB
+            img = Image.open(poster_path).convert('RGB').resize((120, 180), Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(img)
+
+            # 保存图片引用，防止被垃圾回收
+            self.poster_images.append(photo)
+            return photo
+
+        except Exception as e:
+            print(f"Error loading poster {poster_path}: {e}")
+            # 如果加载出错，尝试加载默认海报
+            try:
+                img = Image.open(DEFAULT_POSTER).convert('RGB').resize((120, 180), Image.Resampling.LANCZOS)
+                photo = ImageTk.PhotoImage(img)
+                self.poster_images.append(photo)
+                return photo
+            except Exception as e2:
+                print(f"Error loading default poster: {e2}")
+                return None
+
+    def search_movies(self):
+        keyword = self.search_entry.get().lower()
+        filtered = [m for m in self.movies_data
+                    if keyword in m["title"].lower() or
+                    keyword in m["stars"].lower() or
+                    keyword in m["director"].lower()]
+        self.load_posters(filtered)
+
+    def show_movie_detail(self, movie):
+        # 修改这里，将 self 作为第一个参数传递
+        MovieDetailWindow(self, movie, self.update_rating, self.save_movies_data)
+
+    def update_rating(self, movie, new_rating):
+        # 更新电影数据
+        movie["rating"] = str(new_rating)
+
+        # 更新首页星星显示
+        if "star_widgets" in movie:
+            for i, star in enumerate(movie["star_widgets"]):
+                star.config(image=self.STAR_FILLED if i < new_rating else self.STAR_EMPTY)
+                star.image = self.STAR_FILLED if i < new_rating else self.STAR_EMPTY
+
+        # 保存更新后的电影数据到文件
+        self.save_movies_data()
+
+        messagebox.showinfo("提示", f"已将《{movie['title']}》的评分更新为{new_rating}星")
+
+    def show_add_movie_window(self):
+        AddMovieWindow(self.root, self.add_movie)
+
+    def add_movie(self, new_movie):
+        self.movies_data.append(new_movie)
+        self.load_posters(self.movies_data)
+        messagebox.showinfo("提示", "影片添加成功")
+
+    def save_movies_data(self):
+        # 移除临时的 star_widgets 键
+        for movie in self.movies_data:
+            movie.pop("star_widgets", None)
+
+        # 将电影数据保存到 JSON 文件
+        with open(MOVIES_FILE, "w", encoding="utf-8") as f:
+            json.dump(self.movies_data, f, ensure_ascii=False, indent=4)
+
+    # 其他方法保持不变
+    def play_movie(self, movie):
+        messagebox.showinfo("提示", f"即将播放 {movie['title']}")
+
+    def follow_movie(self, movie):
+        messagebox.showinfo("提示", f"已关注 {movie['title']}")
+
+    def choose_subtitle(self, subtitle):
+        messagebox.showinfo("提示", f"已选择字幕：{subtitle}")
+
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    style = ttk.Style(root)
+    style.theme_use("clam")
+
+    # 配置深色风格
+    style.configure("SearchFrame.TFrame", background="#1E1E1E")
+    style.configure("PostersFrame.TFrame", background="#1E1E1E")
+    style.configure("PosterFrame.TFrame", background="#1E1E1E")
+    style.configure("TitleLabel.TLabel", background="#1E1E1E", foreground="white", font=("Helvetica", 10, "bold"))
+    style.configure("InfoFrame.TFrame", background="#1E1E1E")
+    style.configure("DetailTitle.TLabel", background="#1E1E1E", foreground="white")
+    style.configure("DetailText.TLabel", background="#1E1E1E", foreground="white")
+    style.configure("BtnFrame.TFrame", background="#1E1E1E")
+    style.configure("TButton", background="#333333", foreground="white", borderwidth=0, focuscolor="#333333")
+    style.map("TButton", background=[("active", "#444444")])
+
+    app = MovieLibraryApp(root)
+    root.mainloop()
