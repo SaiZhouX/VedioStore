@@ -14,7 +14,7 @@ class MovieDetailWindow:
         self.window = tk.Toplevel(parent.root)
         self.window.title(movie["title"])
         # 增加窗口高度，确保内容能完整显示
-        self.window.geometry("800x750")
+        self.window.geometry("800x800")
         self.window.configure(bg="#1E1E1E")
 
         # 创建主框架，用于控制整体布局
@@ -82,6 +82,11 @@ class MovieDetailWindow:
             star_label.bind("<Button-1>", lambda event, idx=i: self.update_level(idx + 1))
             self.rating_widgets.append(star_label)
 
+        # 剧情简介，左对齐
+        synopsis = self.movie.get("synopsis", "")
+        synopsis_label = ttk.Label(info_frame, text=f"剧情简介：{synopsis}", style="DetailText.TLabel", wraplength=700)
+        synopsis_label.pack(anchor=tk.W, pady=20)
+
     def update_level(self, new_level):
         # 更新详细页面星星显示
         for i, star in enumerate(self.rating_widgets):
@@ -109,7 +114,7 @@ class MovieDetailWindow:
             self.window.destroy()
 
     def show_edit_movie_window(self):
-        from edit_movie import EditMovieWindow
+        from movie_edit import EditMovieWindow
         EditMovieWindow(self.window, self.movie, self.update_movie)
 
     def update_movie(self, updated_movie):
