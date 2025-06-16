@@ -29,8 +29,16 @@ class MovieDetailWindow:
         if not poster_path or not os.path.exists(poster_path):
             poster_path = "posters/default.png"
 
-        # 调整海报尺寸，保持与main_page比例一致并放大
-        img = Image.open(poster_path).resize((600, 300), Image.Resampling.LANCZOS)
+        # 打开海报图片
+        img = Image.open(poster_path)
+
+        # 计算调整后的高度，保持宽高比
+        width = 800
+        aspect_ratio = img.height / img.width
+        height = int(width * aspect_ratio)
+
+        # 调整海报尺寸
+        img = img.resize((width, height), Image.Resampling.LANCZOS)
         photo = ImageTk.PhotoImage(img)
 
         # 使用grid布局，确保与其他元素左对齐
