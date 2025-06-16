@@ -30,14 +30,7 @@ class MovieLibraryApp:
                 print(f"无法创建默认海报: {e}")
 
         # 加载星星图片
-        STAR_EMPTY_PATH = os.path.join("posters", "star_empty.png")
-        STAR_FILLED_PATH = os.path.join("posters", "star_filled.png")
-
-        if os.path.exists(STAR_EMPTY_PATH) and os.path.exists(STAR_FILLED_PATH):
-            self.STAR_EMPTY = ImageTk.PhotoImage(Image.open(STAR_EMPTY_PATH).resize((20, 20)))
-            self.STAR_FILLED = ImageTk.PhotoImage(Image.open(STAR_FILLED_PATH).resize((20, 20)))
-        else:
-            messagebox.showerror("错误", "星星图片文件不存在，请检查路径。")
+        self.use_image_stars = self.load_star_images()
 
         # 尝试从文件中读取电影数据
         try:
@@ -72,6 +65,22 @@ class MovieLibraryApp:
 
         # 界面组件
         self.create_ui()
+
+    def load_star_images(self):
+        """加载星星图片，如果加载失败则使用文本替代"""
+        try:
+            STAR_EMPTY_PATH = os.path.join("posters", "star_empty.png")
+            STAR_FILLED_PATH = os.path.join("posters", "star_filled.png")
+
+            if os.path.exists(STAR_EMPTY_PATH) and os.path.exists(STAR_FILLED_PATH):
+                self.STAR_EMPTY = ImageTk.PhotoImage(Image.open(STAR_EMPTY_PATH).resize((20, 20)))
+                self.STAR_FILLED = ImageTk.PhotoImage(Image.open(STAR_FILLED_PATH).resize((20, 20)))
+                return True
+            else:
+                return False
+        except Exception as e:
+            print(f"加载星星图片失败: {e}")
+            return False
 
     def create_ui(self):
         # 顶部操作栏 - 添加影片按钮和搜索框
@@ -161,10 +170,17 @@ class MovieLibraryApp:
                 # 存储星星组件引用，用于后续更新
                 movie["star_widgets"] = []
                 for i in range(5):
-                    star_label = ttk.Label(stars_frame,
-                                           image=self.STAR_FILLED if i < level else self.STAR_EMPTY)
-                    star_label.image = self.STAR_FILLED if i < level else self.STAR_EMPTY
-                    star_label.pack(side=tk.LEFT)
+                    if self.use_image_stars:
+                        # 使用图片星星
+                        star_label = ttk.Label(stars_frame, image=self.STAR_FILLED if i < level else self.STAR_EMPTY)
+                        star_label.image = self.STAR_FILLED if i < level else self.STAR_EMPTY
+                    else:
+                        # 使用文本星星，与movie_add.py保持一致的样式
+                        star_label = ttk.Label(stars_frame, text="★" if i < level else "☆",
+                                              foreground="#FFD700" if i < level else "#AAAAAA",
+                                              font=("Helvetica", 14))
+                    # 添加星星之间的间距，与movie_add.py保持一致
+                    star_label.pack(side=tk.LEFT, padx=2)
                     movie["star_widgets"].append(star_label)
 
                 # 绑定点击事件
@@ -289,8 +305,13 @@ class MovieLibraryApp:
         # 更新首页星星显示
         if "star_widgets" in movie:
             for i, star in enumerate(movie["star_widgets"]):
-                star.config(image=self.STAR_FILLED if i < new_level else self.STAR_EMPTY)
-                star.image = self.STAR_FILLED if i < new_level else self.STAR_EMPTY
+                if self.use_image_stars:
+                    star.config(image=self.STAR_FILLED if i < new_level else self.STAR_EMPTY)
+                    star.image = self.STAR_FILLED if i < new_level else self.STAR_EMPTY
+                else:
+                    # 与movie_add.py保持一致的文本星星更新
+                    star.config(text="★" if i < new_level else "☆",
+                               foreground="#FFD700" if i < new_level else "#AAAAAA")
 
         # 保存更新后的电影数据到文件
         self.save_movies_data()
@@ -299,7 +320,7 @@ class MovieLibraryApp:
 
     def show_add_movie_window(self):
         # 延迟导入以避免循环依赖
-        from add_movie import AddMovieWindow
+        from movie_add import AddMovieWindow
         AddMovieWindow(self.root, self.add_movie)
 
     def add_movie(self, new_movie):
@@ -403,4 +424,4 @@ if __name__ == "__main__":
     style.map("TButton", background=[("active", "#444444")])
 
     app = MovieLibraryApp(root)
-    root.mainloop()
+    root.mainloop()    

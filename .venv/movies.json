@@ -6,30 +6,9 @@
         "director": "丹·特拉亨伯格",
         "type": "首推",
         "region": "美国",
-        "level": "7.1",
-        "download_link": "",
-        "watch_link": ""
-    },
-    {
-        "title": "哪吒之魔童闹海",
-        "poster_path": "posters/nezha.jpg",
-        "stars": "吕艳婷, 囧森瑟夫",
-        "director": "饺子",
-        "type": "动画",
-        "region": "中国",
         "level": "3",
         "download_link": "",
-        "watch_link": ""
-    },
-    {
-        "title": "2",
-        "poster_path": "posters/default.png",
-        "stars": "2",
-        "director": "2",
-        "type": "2",
-        "region": "2",
-        "level": "5",
-        "download_link": "2",
-        "watch_link": "6666"
+        "watch_link": "",
+        "synopsis": "吊袜"
     }
 ]
