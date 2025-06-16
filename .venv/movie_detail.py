@@ -40,9 +40,8 @@ class MovieDetailWindow:
         title_label.pack(pady=10, anchor=tk.W)
 
         # 电影信息
-        fields = ["stars", "director", "type", "release_year", "region", "update_date",
-                  "download_link", "watch_link"]
-        labels = ["主演", "导演", "类型", "上映", "地区", "更新", "下载链接", "观看链接"]
+        fields = ["stars", "update_date", "download_link", "watch_link"]
+        labels = ["主演", "更新", "下载链接", "观看链接"]
 
         for field, label_text in zip(fields, labels):
             text = self.movie.get(field, "")

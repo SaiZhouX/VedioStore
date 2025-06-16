@@ -4,12 +4,12 @@ from PIL import Image, ImageTk
 import os
 import json
 from movie_detail import MovieDetailWindow
-from add_movie import AddMovieWindow
+import datetime
 
 # 电影数据存储文件
-MOVIES_FILE = "movies.json"
+MOVIES_FILE = os.path.abspath("movies.json")  # 使用绝对路径
 # 默认海报路径
-DEFAULT_POSTER = "posters/default.png"
+DEFAULT_POSTER = os.path.abspath("posters/default.png")  # 使用绝对路径
 
 
 class MovieLibraryApp:
@@ -123,7 +123,7 @@ class MovieLibraryApp:
 
             if poster_photo:
                 # 创建固定大小的海报框架
-                poster_frame = ttk.Frame(self.posters_frame, style="PosterFrame.TFrame", width=130, height=270)
+                poster_frame = ttk.Frame(self.posters_frame, style="PosterFrame.TFrame", width=130, height=300)  # 增加高度以容纳主演信息
                 poster_frame.grid(row=row, column=col, padx=5, pady=5)
                 poster_frame.grid_propagate(False)  # 防止框架根据内容调整大小
 
@@ -138,7 +138,7 @@ class MovieLibraryApp:
 
                 # 创建标题容器，使用固定高度并允许文本溢出
                 title_container = ttk.Frame(poster_frame, style="PosterFrame.TFrame", height=40)
-                title_container.pack(side=tk.TOP, fill=tk.X, pady=5)
+                title_container.pack(side=tk.TOP, fill=tk.X, pady=2)
                 title_container.pack_propagate(False)  # 防止容器根据内容调整大小
 
                 # 创建标题标签
@@ -146,10 +146,21 @@ class MovieLibraryApp:
                                         style="TitleLabel.TLabel", wraplength=120)
                 title_label.pack(fill=tk.BOTH, expand=True)
 
+                # 新增：主演信息容器
+                stars_container = ttk.Frame(poster_frame, style="PosterFrame.TFrame", height=30)
+                stars_container.pack(side=tk.TOP, fill=tk.X, pady=1)
+                stars_container.pack_propagate(False)  # 防止容器根据内容调整大小
+
+                # 新增：主演信息标签
+                stars_text = movie.get("stars", "")
+                stars_label = ttk.Label(stars_container, text=stars_text if len(stars_text) <= 15 else stars_text[:15] + "...",
+                                       style="StarsLabel.TLabel", wraplength=120)
+                stars_label.pack(fill=tk.BOTH, expand=True)
+
                 # 显示评分星级
                 rating = int(float(movie["rating"])) if movie["rating"] else 0
                 stars_frame = ttk.Frame(poster_frame, style="PosterFrame.TFrame")
-                stars_frame.pack(side=tk.TOP, pady=5)
+                stars_frame.pack(side=tk.TOP, pady=2)
 
                 # 存储星星组件引用，用于后续更新
                 movie["star_widgets"] = []
@@ -164,13 +175,18 @@ class MovieLibraryApp:
                 poster_frame.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))
                 poster_label.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))
                 title_label.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))
+                stars_label.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))  # 新增：为主演信息添加点击事件
 
     def load_poster_image(self, poster_path):
         """加载并统一调整海报尺寸的辅助函数"""
         try:
             # 检查海报路径是否存在，如果不存在则使用默认海报
             if not poster_path or not os.path.exists(poster_path):
-                poster_path = DEFAULT_POSTER
+                if os.path.exists(DEFAULT_POSTER):
+                    poster_path = DEFAULT_POSTER
+                else:
+                    print("默认海报也不存在!")
+                    return None
 
             # 打开并调整图片尺寸，使用高质量重采样，确保模式为RGB
             img = Image.open(poster_path).convert('RGB').resize((120, 180), Image.Resampling.LANCZOS)
@@ -207,6 +223,8 @@ class MovieLibraryApp:
     def update_rating(self, movie, new_rating):
         # 更新电影数据
         movie["rating"] = str(new_rating)
+        # 更新当前日期为更新日期
+        movie["update_date"] = datetime.datetime.now().strftime("%Y-%m-%d")
 
         # 更新首页星星显示
         if "star_widgets" in movie:
@@ -220,21 +238,71 @@ class MovieLibraryApp:
         messagebox.showinfo("提示", f"已将《{movie['title']}》的评分更新为{new_rating}星")
 
     def show_add_movie_window(self):
+        # 延迟导入以避免循环依赖
+        from add_movie import AddMovieWindow
         AddMovieWindow(self.root, self.add_movie)
 
     def add_movie(self, new_movie):
         self.movies_data.append(new_movie)
         self.load_posters(self.movies_data)
         messagebox.showinfo("提示", "影片添加成功")
+        print(f"添加新电影: {new_movie['title']}")
+
+        # 确保保存电影数据
+        save_success = self.save_movies_data()
+        if save_success:
+            print(f"电影数据已成功保存到 {MOVIES_FILE}")
+        else:
+            print(f"保存电影数据失败: {MOVIES_FILE}")
 
     def save_movies_data(self):
+        """保存电影数据到JSON文件，返回保存是否成功"""
         # 移除临时的 star_widgets 键
         for movie in self.movies_data:
             movie.pop("star_widgets", None)
 
-        # 将电影数据保存到 JSON 文件
-        with open(MOVIES_FILE, "w", encoding="utf-8") as f:
-            json.dump(self.movies_data, f, ensure_ascii=False, indent=4)
+        # 确保存储目录存在
+        directory = os.path.dirname(MOVIES_FILE)
+        if not os.path.exists(directory):
+            try:
+                os.makedirs(directory, exist_ok=True)
+                print(f"创建目录: {directory}")
+            except Exception as e:
+                error_info = f"无法创建目录: {directory}\n"
+                error_info += f"错误: {str(e)}\n"
+                error_info += f"当前工作目录: {os.getcwd()}"
+                print(error_info)
+                messagebox.showerror("错误", error_info)
+                return False
+
+        # 尝试将电影数据保存到 JSON 文件
+        try:
+            with open(MOVIES_FILE, "w", encoding="utf-8") as f:
+                json.dump(self.movies_data, f, ensure_ascii=False, indent=4)
+            print(f"电影数据已成功保存到 {MOVIES_FILE}")
+
+            # 验证保存的文件是否可读
+            try:
+                with open(MOVIES_FILE, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                print(f"验证成功: 保存的文件包含 {len(data)} 部电影")
+                return True
+            except Exception as e:
+                print(f"验证失败: 保存的文件无法读取: {e}")
+                return False
+
+        except Exception as e:
+            # 提供更详细的错误信息
+            error_info = f"保存电影数据失败: {str(e)}\n"
+            error_info += f"错误类型: {type(e).__name__}\n"
+            error_info += f"当前工作目录: {os.getcwd()}\n"
+            error_info += f"尝试保存的文件路径: {MOVIES_FILE}\n"
+            error_info += f"文件所在目录是否存在: {os.path.exists(directory)}\n"
+            error_info += f"目录权限: {oct(os.stat(directory).st_mode & 0o777)}"
+
+            print(error_info)
+            messagebox.showerror("错误", error_info)
+            return False
 
     # 其他方法保持不变
     def play_movie(self, movie):
@@ -257,6 +325,7 @@ if __name__ == "__main__":
     style.configure("PostersFrame.TFrame", background="#1E1E1E")
     style.configure("PosterFrame.TFrame", background="#1E1E1E")
     style.configure("TitleLabel.TLabel", background="#1E1E1E", foreground="white", font=("Helvetica", 10, "bold"))
+    style.configure("StarsLabel.TLabel", background="#1E1E1E", foreground="#AAAAAA", font=("Helvetica", 9))  # 新增：主演信息样式
     style.configure("InfoFrame.TFrame", background="#1E1E1E")
     style.configure("DetailTitle.TLabel", background="#1E1E1E", foreground="white")
     style.configure("DetailText.TLabel", background="#1E1E1E", foreground="white")
