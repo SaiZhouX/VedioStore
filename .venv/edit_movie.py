@@ -72,26 +72,26 @@ class EditMovieWindow:
         rating_label.pack(side=tk.LEFT)
 
         self.rating_widgets = []
-        current_rating = int(float(self.movie["rating"])) if self.movie["rating"] else 0
+        current_level = int(float(self.movie["level"])) if self.movie["level"] else 0
 
         for i in range(5):
             star_label = ttk.Label(rating_frame,
-                                   image=self.STAR_FILLED if i < current_rating else self.STAR_EMPTY)
-            star_label.image = self.STAR_FILLED if i < current_rating else self.STAR_EMPTY
+                                   image=self.STAR_FILLED if i < current_level else self.STAR_EMPTY)
+            star_label.image = self.STAR_FILLED if i < current_level else self.STAR_EMPTY
             star_label.pack(side=tk.LEFT, padx=2)
-            star_label.bind("<Button-1>", lambda event, idx=i: self.update_rating(idx + 1))
+            star_label.bind("<Button-1>", lambda event, idx=i: self.update_level(idx + 1))
             self.rating_widgets.append(star_label)
 
         # 修改按钮
         edit_btn = ttk.Button(self.window, text="修改", command=self.edit_movie)
         edit_btn.pack(pady=20)
 
-    def update_rating(self, new_rating):
+    def update_level(self, new_level):
         # 更新星星显示
         for i, star in enumerate(self.rating_widgets):
-            star.config(image=self.STAR_FILLED if i < new_rating else self.STAR_EMPTY)
-            star.image = self.STAR_FILLED if i < new_rating else self.STAR_EMPTY
-        self.current_rating = new_rating
+            star.config(image=self.STAR_FILLED if i < new_level else self.STAR_EMPTY)
+            star.image = self.STAR_FILLED if i < new_level else self.STAR_EMPTY
+        self.current_level = new_level
 
     def edit_movie(self):
         title = self.title_entry.get()
@@ -99,8 +99,7 @@ class EditMovieWindow:
         poster_path = self.poster_entry.get()
         download_link = self.download_entry.get()
         watch_link = self.watch_entry.get()
-        rating = str(self.current_rating)
-        update_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        level = str(self.current_level)
 
         if not title:
             messagebox.showerror("错误", "标题不能为空")
@@ -112,10 +111,8 @@ class EditMovieWindow:
             "stars": stars,
             "director": self.movie["director"],
             "type": self.movie["type"],
-            "release_year": self.movie["release_year"],
             "region": self.movie["region"],
-            "update_date": update_date,
-            "rating": rating,
+            "level": level,
             "download_link": download_link,
             "watch_link": watch_link
         }

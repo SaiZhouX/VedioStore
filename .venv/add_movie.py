@@ -65,25 +65,25 @@ class AddMovieWindow:
         rating_label.pack(side=tk.LEFT)
 
         self.rating_widgets = []
-        self.current_rating = 0
+        self.current_level = 0
 
         for i in range(5):
             star_label = ttk.Label(rating_frame, image=self.STAR_EMPTY)
             star_label.image = self.STAR_EMPTY
             star_label.pack(side=tk.LEFT, padx=2)
-            star_label.bind("<Button-1>", lambda event, idx=i: self.update_rating(idx + 1))
+            star_label.bind("<Button-1>", lambda event, idx=i: self.update_level(idx + 1))
             self.rating_widgets.append(star_label)
 
         # 添加按钮
         add_btn = ttk.Button(self.window, text="添加", command=self.add_movie)
         add_btn.pack(pady=20)
 
-    def update_rating(self, new_rating):
+    def update_level(self, new_level):
         # 更新星星显示
         for i, star in enumerate(self.rating_widgets):
-            star.config(image=self.STAR_FILLED if i < new_rating else self.STAR_EMPTY)
-            star.image = self.STAR_FILLED if i < new_rating else self.STAR_EMPTY
-        self.current_rating = new_rating
+            star.config(image=self.STAR_FILLED if i < new_level else self.STAR_EMPTY)
+            star.image = self.STAR_FILLED if i < new_level else self.STAR_EMPTY
+        self.current_level = new_level
 
     def add_movie(self):
         title = self.title_entry.get()
@@ -91,8 +91,7 @@ class AddMovieWindow:
         poster_path = self.poster_entry.get()
         download_link = self.download_entry.get()
         watch_link = self.watch_entry.get()
-        rating = str(self.current_rating)
-        update_date = datetime.datetime.now().strftime("%Y-%m-%d")
+        level = str(self.current_level)
 
         if not title:
             messagebox.showerror("错误", "标题不能为空")
@@ -104,10 +103,8 @@ class AddMovieWindow:
             "stars": stars,
             "director": "",
             "type": "",
-            "release_year": "",
             "region": "",
-            "update_date": update_date,
-            "rating": rating,
+            "level": level,
             "download_link": download_link,
             "watch_link": watch_link
         }

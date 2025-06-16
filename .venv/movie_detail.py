@@ -5,85 +5,91 @@ import os
 
 
 class MovieDetailWindow:
-    def __init__(self, parent, movie, update_rating_callback, save_data_callback):
+    def __init__(self, parent, movie, update_level_callback, save_data_callback):
         self.parent = parent
         self.movie = movie
-        self.update_rating_callback = update_rating_callback
+        self.update_level_callback = update_level_callback
         self.save_data_callback = save_data_callback
 
         self.window = tk.Toplevel(parent.root)
         self.window.title(movie["title"])
-        self.window.geometry("800x600")
+        # 增加窗口高度，确保内容能完整显示
+        self.window.geometry("800x750")
         self.window.configure(bg="#1E1E1E")
 
-        self.create_ui()
+        # 创建主框架，用于控制整体布局
+        main_frame = ttk.Frame(self.window, style="InfoFrame.TFrame")
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
 
-    def create_ui(self):
+        self.create_ui(main_frame)
+
+    def create_ui(self, parent_frame):
         # 海报
         poster_path = self.movie["poster_path"]
         if not poster_path or not os.path.exists(poster_path):
             poster_path = "posters/default.png"
 
-        img = Image.open(poster_path).resize((200, 300), Image.Resampling.LANCZOS)
+        # 调整海报尺寸，保持与main_page比例一致并放大
+        img = Image.open(poster_path).resize((600, 300), Image.Resampling.LANCZOS)
         photo = ImageTk.PhotoImage(img)
-        poster_label = ttk.Label(self.window, image=photo)
+
+        # 使用grid布局，确保与其他元素左对齐
+        poster_label = ttk.Label(parent_frame, image=photo)
         poster_label.image = photo
-        poster_label.pack(pady=20)
+        poster_label.grid(row=0, column=0, sticky=tk.W, pady=(0, 20))
 
-        # 信息框架
-        info_frame = ttk.Frame(self.window, style="InfoFrame.TFrame")
-        info_frame.pack(pady=20, fill=tk.X)
+        # 按钮框架，放到海报和文字中间，与海报左对齐
+        btn_frame = ttk.Frame(parent_frame, style="BtnFrame.TFrame")
+        btn_frame.grid(row=1, column=0, sticky=tk.W, pady=(0, 20))
 
-        # 标题和评分
-        title_label = ttk.Label(info_frame, text=f"{self.movie['title']}  [{self.movie.get('rating', '')}分]",
+        ttk.Button(btn_frame, text="播放", command=self.play_movie).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(btn_frame, text="修改信息", command=self.show_edit_movie_window).pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Button(btn_frame, text="删除", command=self.delete_movie).pack(side=tk.LEFT)
+
+        # 信息框架，与海报左对齐
+        info_frame = ttk.Frame(parent_frame, style="InfoFrame.TFrame")
+        info_frame.grid(row=2, column=0, sticky=tk.W)
+
+        # 标题和评分，左对齐
+        title_label = ttk.Label(info_frame, text=f"{self.movie['title']}",
                                 style="DetailTitle.TLabel", font=("Helvetica", 18, "bold"))
-        title_label.pack(pady=10, anchor=tk.CENTER)
+        title_label.pack(anchor=tk.W, pady=(0, 10))
 
-        # 电影信息
-        fields = ["stars", "update_date", "download_link", "watch_link"]
-        labels = ["主演", "更新", "下载链接", "观看链接"]
+        # 电影信息，左对齐
+        fields = ["stars", "download_link", "watch_link"]
+        labels = ["主演", "下载链接", "观看链接"]
 
         for field, label_text in zip(fields, labels):
             text = self.movie.get(field, "")
             label = ttk.Label(info_frame, text=f"{label_text}：{text}", style="DetailText.TLabel")
-            label.pack(pady=5, anchor=tk.CENTER)
+            label.pack(anchor=tk.W, pady=5)
 
-        # 新增评分星级（初始5颗空星星）
+        # 评分星级，左对齐
         rating_frame = ttk.Frame(info_frame, style="PosterFrame.TFrame")
-        rating_frame.pack(pady=20, anchor=tk.CENTER)
+        rating_frame.pack(anchor=tk.W, pady=20)
 
         rating_label = ttk.Label(rating_frame, text="评分：", style="DetailText.TLabel")
         rating_label.pack(side=tk.LEFT)
 
-        current_rating = int(float(self.movie["rating"])) if self.movie["rating"] else 0
+        current_level = int(float(self.movie["level"])) if self.movie["level"] else 0
         self.rating_widgets = []
 
         for i in range(5):
             star_label = ttk.Label(rating_frame,
-                                   image=self.parent.STAR_FILLED if i < current_rating else self.parent.STAR_EMPTY)
-            star_label.image = self.parent.STAR_FILLED if i < current_rating else self.parent.STAR_EMPTY
+                                   image=self.parent.STAR_FILLED if i < current_level else self.parent.STAR_EMPTY)
+            star_label.image = self.parent.STAR_FILLED if i < current_level else self.parent.STAR_EMPTY
             star_label.pack(side=tk.LEFT, padx=2)
-            star_label.bind("<Button-1>", lambda event, idx=i: self.update_rating(idx + 1))
+            star_label.bind("<Button-1>", lambda event, idx=i: self.update_level(idx + 1))
             self.rating_widgets.append(star_label)
 
-        # 按钮框架
-        btn_frame = ttk.Frame(self.window, style="BtnFrame.TFrame")
-        btn_frame.pack(pady=20, fill=tk.X)
-
-        ttk.Button(btn_frame, text="播放", command=self.play_movie).pack(side=tk.LEFT, padx=10)
-        # 新增修改按钮
-        ttk.Button(btn_frame, text="修改信息", command=self.show_edit_movie_window).pack(side=tk.LEFT, padx=10)
-        # 新增删除按钮
-        ttk.Button(btn_frame, text="删除", command=self.delete_movie).pack(side=tk.LEFT, padx=10)
-
-    def update_rating(self, new_rating):
+    def update_level(self, new_level):
         # 更新详细页面星星显示
         for i, star in enumerate(self.rating_widgets):
-            star.config(image=self.parent.STAR_FILLED if i < new_rating else self.parent.STAR_EMPTY)
-            star.image = self.parent.STAR_FILLED if i < new_rating else self.parent.STAR_EMPTY
+            star.config(image=self.parent.STAR_FILLED if i < new_level else self.parent.STAR_EMPTY)
+            star.image = self.parent.STAR_FILLED if i < new_level else self.parent.STAR_EMPTY
 
         # 调用主窗口的评分更新方法
-        self.update_rating_callback(self.movie, new_rating)
+        self.update_level_callback(self.movie, new_level)
 
     def play_movie(self):
         messagebox.showinfo("提示", f"即将播放 {self.movie['title']}")

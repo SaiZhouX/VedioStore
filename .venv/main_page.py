@@ -4,7 +4,6 @@ from PIL import Image, ImageTk
 import os
 import json
 from movie_detail import MovieDetailWindow
-import datetime
 
 # 电影数据存储文件
 MOVIES_FILE = os.path.abspath("movies.json")  # 使用绝对路径
@@ -53,10 +52,8 @@ class MovieLibraryApp:
                     "stars": "迈克尔·比恩, 道格·科克尔",
                     "director": "丹·特拉亨伯格",
                     "type": "首推",
-                    "release_year": 2025,
                     "region": "美国",
-                    "update_date": "2025-06-07",
-                    "rating": "7.1",
+                    "level": "7.1",
                     "download_link": "",
                     "watch_link": ""
                 },
@@ -66,10 +63,8 @@ class MovieLibraryApp:
                     "stars": "吕艳婷, 囧森瑟夫",
                     "director": "饺子",
                     "type": "动画",
-                    "release_year": 2025,
                     "region": "中国",
-                    "update_date": "2025-06-05",
-                    "rating": "8.6",
+                    "level": "8.6",
                     "download_link": "",
                     "watch_link": ""
                 }
@@ -158,7 +153,7 @@ class MovieLibraryApp:
                 stars_label.pack(fill=tk.BOTH, expand=True)
 
                 # 显示评分星级
-                rating = int(float(movie["rating"])) if movie["rating"] else 0
+                level = int(float(movie["level"])) if movie["level"] else 0
                 stars_frame = ttk.Frame(poster_frame, style="PosterFrame.TFrame")
                 # 修改这里，使用 pack 方法左对齐
                 stars_frame.pack(side=tk.TOP, pady=2, anchor=tk.W)
@@ -167,8 +162,8 @@ class MovieLibraryApp:
                 movie["star_widgets"] = []
                 for i in range(5):
                     star_label = ttk.Label(stars_frame,
-                                           image=self.STAR_FILLED if i < rating else self.STAR_EMPTY)
-                    star_label.image = self.STAR_FILLED if i < rating else self.STAR_EMPTY
+                                           image=self.STAR_FILLED if i < level else self.STAR_EMPTY)
+                    star_label.image = self.STAR_FILLED if i < level else self.STAR_EMPTY
                     star_label.pack(side=tk.LEFT)
                     movie["star_widgets"].append(star_label)
 
@@ -285,24 +280,22 @@ class MovieLibraryApp:
 
     def show_movie_detail(self, movie):
         # 修改这里，将 self 作为第一个参数传递
-        MovieDetailWindow(self, movie, self.update_rating, self.save_movies_data)
+        MovieDetailWindow(self, movie, self.update_level, self.save_movies_data)
 
-    def update_rating(self, movie, new_rating):
+    def update_level(self, movie, new_level):
         # 更新电影数据
-        movie["rating"] = str(new_rating)
-        # 更新当前日期为更新日期
-        movie["update_date"] = datetime.datetime.now().strftime("%Y-%m-%d")
+        movie["level"] = str(new_level)
 
         # 更新首页星星显示
         if "star_widgets" in movie:
             for i, star in enumerate(movie["star_widgets"]):
-                star.config(image=self.STAR_FILLED if i < new_rating else self.STAR_EMPTY)
-                star.image = self.STAR_FILLED if i < new_rating else self.STAR_EMPTY
+                star.config(image=self.STAR_FILLED if i < new_level else self.STAR_EMPTY)
+                star.image = self.STAR_FILLED if i < new_level else self.STAR_EMPTY
 
         # 保存更新后的电影数据到文件
         self.save_movies_data()
 
-        messagebox.showinfo("提示", f"已将《{movie['title']}》的评分更新为{new_rating}星")
+        messagebox.showinfo("提示", f"已将《{movie['title']}》的评分更新为{new_level}星")
 
     def show_add_movie_window(self):
         # 延迟导入以避免循环依赖
