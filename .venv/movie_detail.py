@@ -13,57 +13,35 @@ class MovieDetailWindow:
 
         self.window = tk.Toplevel(parent.root)
         self.window.title(movie["title"])
-        # 增加窗口高度，确保内容能完整显示
-        self.window.geometry("800x800")
+        self.window.geometry("840x1200")  # 增加一些宽度以容纳滚动条
         self.window.configure(bg="#1E1E1E")
 
-        # 创建主框架，用于控制整体布局
+        # 创建主框架
         main_frame = ttk.Frame(self.window, style="InfoFrame.TFrame")
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        self.create_ui(main_frame)
+        # 创建Canvas来显示图片
+        self.canvas = tk.Canvas(main_frame, width=800, height=538, bg="#1E1E1E", highlightthickness=0)
+        self.canvas.grid(row=0, column=0, sticky=tk.NSEW, pady=(0, 20))
 
-    def create_ui(self, parent_frame):
-        # 海报
-        poster_path = self.movie["poster_path"]
-        if not poster_path or not os.path.exists(poster_path):
-            poster_path = "posters/default.png"
-
-        # 打开海报图片
-        img = Image.open(poster_path)
-
-        # 计算调整后的高度，保持宽高比
-        width = 800
-        aspect_ratio = img.height / img.width
-        height = int(width * aspect_ratio)
-
-        # 调整海报尺寸
-        img = img.resize((width, height), Image.Resampling.LANCZOS)
-        photo = ImageTk.PhotoImage(img)
-
-        # 使用grid布局，确保与其他元素左对齐
-        poster_label = ttk.Label(parent_frame, image=photo)
-        poster_label.image = photo
-        poster_label.grid(row=0, column=0, sticky=tk.W, pady=(0, 20))
-
-        # 按钮框架，放到海报和文字中间，与海报左对齐
-        btn_frame = ttk.Frame(parent_frame, style="BtnFrame.TFrame")
+        # 按钮框架
+        btn_frame = ttk.Frame(main_frame, style="BtnFrame.TFrame")
         btn_frame.grid(row=1, column=0, sticky=tk.W, pady=(0, 20))
 
         ttk.Button(btn_frame, text="播放", command=self.play_movie).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(btn_frame, text="修改信息", command=self.show_edit_movie_window).pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(btn_frame, text="删除", command=self.delete_movie).pack(side=tk.LEFT)
 
-        # 信息框架，与海报左对齐
-        info_frame = ttk.Frame(parent_frame, style="InfoFrame.TFrame")
+        # 信息框架
+        info_frame = ttk.Frame(main_frame, style="InfoFrame.TFrame")
         info_frame.grid(row=2, column=0, sticky=tk.W)
 
-        # 标题和评分，左对齐
+        # 标题
         title_label = ttk.Label(info_frame, text=f"{self.movie['title']}",
                                 style="DetailTitle.TLabel", font=("Helvetica", 18, "bold"))
         title_label.pack(anchor=tk.W, pady=(0, 10))
 
-        # 电影信息，左对齐
+        # 电影信息
         fields = ["stars", "download_link", "watch_link"]
         labels = ["主演", "下载链接", "观看链接"]
 
@@ -72,7 +50,7 @@ class MovieDetailWindow:
             label = ttk.Label(info_frame, text=f"{label_text}：{text}", style="DetailText.TLabel")
             label.pack(anchor=tk.W, pady=5)
 
-        # 评分星级，左对齐
+        # 评分星级
         rating_frame = ttk.Frame(info_frame, style="PosterFrame.TFrame")
         rating_frame.pack(anchor=tk.W, pady=20)
 
@@ -90,18 +68,37 @@ class MovieDetailWindow:
             star_label.bind("<Button-1>", lambda event, idx=i: self.update_level(idx + 1))
             self.rating_widgets.append(star_label)
 
-        # 剧情简介，左对齐
+        # 剧情简介
         synopsis = self.movie.get("synopsis", "")
         synopsis_label = ttk.Label(info_frame, text=f"剧情简介：{synopsis}", style="DetailText.TLabel", wraplength=700)
         synopsis_label.pack(anchor=tk.W, pady=20)
 
+        # 加载并显示图片
+        self.load_poster()
+
+    def load_poster(self):
+        poster_path = self.movie["poster_path"]
+        if not poster_path or not os.path.exists(poster_path):
+            poster_path = "posters/default.png"
+
+        try:
+            img = Image.open(poster_path)
+            # 调整海报尺寸为固定的800x538
+            img = img.resize((800, 538), Image.Resampling.LANCZOS)
+            self.photo = ImageTk.PhotoImage(img)
+
+            # 在Canvas上显示图片
+            self.canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
+        except Exception as e:
+            print(f"Error loading poster: {e}")
+            # 如果加载失败，显示错误信息
+            self.canvas.create_text(400, 269, text="无法加载海报", fill="white", font=("Helvetica", 14))
+
     def update_level(self, new_level):
-        # 更新详细页面星星显示
         for i, star in enumerate(self.rating_widgets):
             star.config(image=self.parent.STAR_FILLED if i < new_level else self.parent.STAR_EMPTY)
             star.image = self.parent.STAR_FILLED if i < new_level else self.parent.STAR_EMPTY
 
-        # 调用主窗口的评分更新方法
         self.update_level_callback(self.movie, new_level)
 
     def play_movie(self):

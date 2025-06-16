@@ -127,11 +127,11 @@ class MovieLibraryApp:
 
             if poster_photo:
                 # 创建固定大小的海报框架
-                poster_frame = ttk.Frame(self.posters_frame, style="PosterFrame.TFrame", width=300, height=130)  # 增加高度以容纳主演信息
+                poster_frame = ttk.Frame(self.posters_frame, style="PosterFrame.TFrame", width=180, height=230)  # 调整宽度为海报宽度
                 poster_frame.grid(row=row, column=col, padx=5, pady=5)
                 poster_frame.grid_propagate(False)  # 防止框架根据内容调整大小
 
-                # 创建海报容器，使用pack布局确保顶部对齐
+                # 创建海报容器
                 image_container = ttk.Frame(poster_frame, style="PosterFrame.TFrame")
                 image_container.pack(side=tk.TOP, fill=tk.X, pady=(5, 0))
 
@@ -145,26 +145,25 @@ class MovieLibraryApp:
                 title_container.pack(side=tk.TOP, fill=tk.X, pady=2)
                 title_container.pack_propagate(False)  # 防止容器根据内容调整大小
 
-                # 创建标题标签
+                # 创建标题标签 - 调整wraplength为海报宽度
                 title_label = ttk.Label(title_container, text=movie["title"],
-                                        style="TitleLabel.TLabel", wraplength=120)
+                                        style="TitleLabel.TLabel", wraplength=180)  # 设置为海报宽度
                 title_label.pack(fill=tk.BOTH, expand=True)
 
-                # 新增：主演信息容器
+                # 主演信息容器
                 stars_container = ttk.Frame(poster_frame, style="PosterFrame.TFrame", height=30)
                 stars_container.pack(side=tk.TOP, fill=tk.X, pady=1)
                 stars_container.pack_propagate(False)  # 防止容器根据内容调整大小
 
-                # 新增：主演信息标签
+                # 主演信息标签
                 stars_text = movie.get("stars", "")
                 stars_label = ttk.Label(stars_container, text=stars_text if len(stars_text) <= 15 else stars_text[:15] + "...",
-                                       style="StarsLabel.TLabel", wraplength=120)
+                                       style="StarsLabel.TLabel", wraplength=180)  # 设置为海报宽度
                 stars_label.pack(fill=tk.BOTH, expand=True)
 
                 # 显示评分星级
                 level = int(float(movie["level"])) if movie["level"] else 0
                 stars_frame = ttk.Frame(poster_frame, style="PosterFrame.TFrame")
-                # 修改这里，使用 pack 方法左对齐
                 stars_frame.pack(side=tk.TOP, pady=2, anchor=tk.W)
 
                 # 存储星星组件引用，用于后续更新
@@ -187,7 +186,7 @@ class MovieLibraryApp:
                 poster_frame.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))
                 poster_label.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))
                 title_label.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))
-                stars_label.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))  # 新增：为主演信息添加点击事件
+                stars_label.bind("<Button-1>", lambda event, m=movie: self.show_movie_detail(m))
 
     def load_poster_image(self, poster_path):
         """加载并统一调整海报尺寸的辅助函数"""
@@ -203,8 +202,8 @@ class MovieLibraryApp:
             # 打开图片
             img = Image.open(poster_path).convert('RGB')
 
-            # 目标尺寸
-            target_width = 250
+            # 目标尺寸 - 海报宽度
+            target_width = 180
             target_height = 120
 
             # 计算宽高比
@@ -248,8 +247,8 @@ class MovieLibraryApp:
                 img = Image.open(DEFAULT_POSTER).convert('RGB')
 
                 # 目标尺寸
-                target_width = 120
-                target_height = 180
+                target_width = 180  # 保持与海报宽度一致
+                target_height = 120
 
                 # 计算宽高比
                 aspect_ratio = img.width / img.height
@@ -295,7 +294,6 @@ class MovieLibraryApp:
         self.load_posters(filtered)
 
     def show_movie_detail(self, movie):
-        # 修改这里，将 self 作为第一个参数传递
         MovieDetailWindow(self, movie, self.update_level, self.save_movies_data)
 
     def update_level(self, movie, new_level):
@@ -309,7 +307,6 @@ class MovieLibraryApp:
                     star.config(image=self.STAR_FILLED if i < new_level else self.STAR_EMPTY)
                     star.image = self.STAR_FILLED if i < new_level else self.STAR_EMPTY
                 else:
-                    # 与movie_add.py保持一致的文本星星更新
                     star.config(text="★" if i < new_level else "☆",
                                foreground="#FFD700" if i < new_level else "#AAAAAA")
 
@@ -415,7 +412,7 @@ if __name__ == "__main__":
     style.configure("PostersFrame.TFrame", background="#1E1E1E")
     style.configure("PosterFrame.TFrame", background="#1E1E1E")
     style.configure("TitleLabel.TLabel", background="#1E1E1E", foreground="white", font=("Helvetica", 10, "bold"))
-    style.configure("StarsLabel.TLabel", background="#1E1E1E", foreground="#AAAAAA", font=("Helvetica", 9))  # 新增：主演信息样式
+    style.configure("StarsLabel.TLabel", background="#1E1E1E", foreground="#AAAAAA", font=("Helvetica", 9))
     style.configure("InfoFrame.TFrame", background="#1E1E1E")
     style.configure("DetailTitle.TLabel", background="#1E1E1E", foreground="white")
     style.configure("DetailText.TLabel", background="#1E1E1E", foreground="white")
@@ -424,4 +421,4 @@ if __name__ == "__main__":
     style.map("TButton", background=[("active", "#444444")])
 
     app = MovieLibraryApp(root)
-    root.mainloop()    
+    root.mainloop()
