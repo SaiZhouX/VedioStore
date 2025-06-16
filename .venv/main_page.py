@@ -123,7 +123,7 @@ class MovieLibraryApp:
 
             if poster_photo:
                 # 创建固定大小的海报框架
-                poster_frame = ttk.Frame(self.posters_frame, style="PosterFrame.TFrame", width=130, height=300)  # 增加高度以容纳主演信息
+                poster_frame = ttk.Frame(self.posters_frame, style="PosterFrame.TFrame", width=300, height=130)  # 增加高度以容纳主演信息
                 poster_frame.grid(row=row, column=col, padx=5, pady=5)
                 poster_frame.grid_propagate(False)  # 防止框架根据内容调整大小
 
@@ -160,7 +160,8 @@ class MovieLibraryApp:
                 # 显示评分星级
                 rating = int(float(movie["rating"])) if movie["rating"] else 0
                 stars_frame = ttk.Frame(poster_frame, style="PosterFrame.TFrame")
-                stars_frame.pack(side=tk.TOP, pady=2)
+                # 修改这里，使用 pack 方法左对齐
+                stars_frame.pack(side=tk.TOP, pady=2, anchor=tk.W)
 
                 # 存储星星组件引用，用于后续更新
                 movie["star_widgets"] = []
@@ -188,9 +189,42 @@ class MovieLibraryApp:
                     print("默认海报也不存在!")
                     return None
 
-            # 打开并调整图片尺寸，使用高质量重采样，确保模式为RGB
-            img = Image.open(poster_path).convert('RGB').resize((120, 180), Image.Resampling.LANCZOS)
-            photo = ImageTk.PhotoImage(img)
+            # 打开图片
+            img = Image.open(poster_path).convert('RGB')
+
+            # 目标尺寸
+            target_width = 250
+            target_height = 120
+
+            # 计算宽高比
+            aspect_ratio = img.width / img.height
+
+            # 计算等比例缩小后的尺寸
+            if img.width > target_width or img.height > target_height:
+                if img.width / target_width > img.height / target_height:
+                    new_width = target_width
+                    new_height = int(new_width / aspect_ratio)
+                else:
+                    new_height = target_height
+                    new_width = int(new_height * aspect_ratio)
+            else:
+                new_width = img.width
+                new_height = img.height
+
+            # 调整图片大小
+            resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+            # 创建一个空白的目标大小的图片
+            final_img = Image.new('RGB', (target_width, target_height), color=(50, 50, 50))
+
+            # 计算居中位置
+            x_offset = (target_width - new_width) // 2
+            y_offset = (target_height - new_height) // 2
+
+            # 将调整后的图片粘贴到空白图片上
+            final_img.paste(resized_img, (x_offset, y_offset))
+
+            photo = ImageTk.PhotoImage(final_img)
 
             # 保存图片引用，防止被垃圾回收
             self.poster_images.append(photo)
@@ -200,8 +234,41 @@ class MovieLibraryApp:
             print(f"Error loading poster {poster_path}: {e}")
             # 如果加载出错，尝试加载默认海报
             try:
-                img = Image.open(DEFAULT_POSTER).convert('RGB').resize((120, 180), Image.Resampling.LANCZOS)
-                photo = ImageTk.PhotoImage(img)
+                img = Image.open(DEFAULT_POSTER).convert('RGB')
+
+                # 目标尺寸
+                target_width = 120
+                target_height = 180
+
+                # 计算宽高比
+                aspect_ratio = img.width / img.height
+
+                # 计算等比例缩小后的尺寸
+                if img.width > target_width or img.height > target_height:
+                    if img.width / target_width > img.height / target_height:
+                        new_width = target_width
+                        new_height = int(new_width / aspect_ratio)
+                    else:
+                        new_height = target_height
+                        new_width = int(new_height * aspect_ratio)
+                else:
+                    new_width = img.width
+                    new_height = img.height
+
+                # 调整图片大小
+                resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+                # 创建一个空白的目标大小的图片
+                final_img = Image.new('RGB', (target_width, target_height), color=(50, 50, 50))
+
+                # 计算居中位置
+                x_offset = (target_width - new_width) // 2
+                y_offset = (target_height - new_height) // 2
+
+                # 将调整后的图片粘贴到空白图片上
+                final_img.paste(resized_img, (x_offset, y_offset))
+
+                photo = ImageTk.PhotoImage(final_img)
                 self.poster_images.append(photo)
                 return photo
             except Exception as e2:

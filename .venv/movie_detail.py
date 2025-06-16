@@ -75,8 +75,6 @@ class MovieDetailWindow:
         ttk.Button(btn_frame, text="修改信息", command=self.show_edit_movie_window).pack(side=tk.LEFT, padx=10)
         # 新增删除按钮
         ttk.Button(btn_frame, text="删除", command=self.delete_movie).pack(side=tk.LEFT, padx=10)
-        ttk.Button(btn_frame, text="HD英语中学", command=lambda: self.choose_subtitle("HD英语中学")).pack(side=tk.LEFT,
-                                                                                                          padx=10)
 
     def update_rating(self, new_rating):
         # 更新详细页面星星显示
