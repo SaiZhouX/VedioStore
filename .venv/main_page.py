@@ -314,6 +314,15 @@ class MovieLibraryApp:
     def choose_subtitle(self, subtitle):
         messagebox.showinfo("提示", f"已选择字幕：{subtitle}")
 
+    def delete_movie(self, movie):
+        # 从电影数据列表中删除该电影
+        self.movies_data = [m for m in self.movies_data if m != movie]
+        # 重新加载海报
+        self.load_posters(self.movies_data)
+        # 保存更新后的电影数据到文件
+        self.save_movies_data()
+        messagebox.showinfo("提示", f"已删除《{movie['title']}》")
+
 
 if __name__ == "__main__":
     root = tk.Tk()

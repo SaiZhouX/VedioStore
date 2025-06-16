@@ -71,7 +71,10 @@ class MovieDetailWindow:
         btn_frame.pack(pady=20, fill=tk.X, padx=20)
 
         ttk.Button(btn_frame, text="播放", command=self.play_movie).pack(side=tk.LEFT, padx=10)
-        ttk.Button(btn_frame, text="关注", command=self.follow_movie).pack(side=tk.LEFT, padx=10)
+        # 删除关注按钮
+        # ttk.Button(btn_frame, text="关注", command=self.follow_movie).pack(side=tk.LEFT, padx=10)
+        # 新增删除按钮
+        ttk.Button(btn_frame, text="删除", command=self.delete_movie).pack(side=tk.LEFT, padx=10)
         ttk.Button(btn_frame, text="HD中英双字", command=lambda: self.choose_subtitle("HD中英双字")).pack(side=tk.LEFT,
                                                                                                           padx=10)
         ttk.Button(btn_frame, text="HD英语中学", command=lambda: self.choose_subtitle("HD英语中学")).pack(side=tk.LEFT,
@@ -94,3 +97,11 @@ class MovieDetailWindow:
 
     def choose_subtitle(self, subtitle):
         messagebox.showinfo("提示", f"已选择字幕：{subtitle}")
+
+    def delete_movie(self):
+        # 弹出二次确认窗口
+        confirm = messagebox.askyesno("确认删除", f"确定要删除《{self.movie['title']}》吗？")
+        if confirm:
+            # 调用主窗口的删除方法
+            self.parent.delete_movie(self.movie)
+            self.window.destroy()
