@@ -125,7 +125,7 @@ class AddMovieWindow:
             return
 
         # 自动生成海报路径，使用单斜杠
-        poster_path = f"posters/{title}.png"
+        poster_path = f"posters/{title}.jpg"
 
         new_movie = {
             "title": title,
