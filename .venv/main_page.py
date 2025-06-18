@@ -17,6 +17,7 @@ class MovieLibraryApp:
         self.root.title("影片库")
         self.root.geometry("1200x800")
         self.root.configure(bg="#1E1E1E")
+        self.root.minsize(800, 900)  # 进一步增加最小高度
 
         # 创建海报目录
         os.makedirs("posters", exist_ok=True)
@@ -63,8 +64,20 @@ class MovieLibraryApp:
                 }
             ]
 
+        # 分页相关变量
+        self.current_page = 1
+        self.movies_per_page = 0  # 动态计算
+        self.posters_frame_width = 0  # 海报区域宽度
+        self._load_pending = False  # 防止重复加载
+
         # 界面组件
         self.create_ui()
+
+        # 绑定窗口大小变化事件
+        self.root.bind("<Configure>", self.on_window_resize)
+
+        # 窗口首次显示后加载海报
+        self.root.after(100, self.load_posters)
 
     def load_star_images(self):
         """加载星星图片，如果加载失败则使用文本替代"""
@@ -101,14 +114,120 @@ class MovieLibraryApp:
         self.search_btn = ttk.Button(search_frame, text="搜索", command=self.search_movies)
         self.search_btn.pack(side=tk.LEFT, padx=5)
 
-        # 海报墙框架
-        self.posters_frame = ttk.Frame(self.root, style="PostersFrame.TFrame")
-        self.posters_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=10)
+        # 海报墙框架 - 使用Canvas实现滚动
+        self.canvas_frame = ttk.Frame(self.root, style="PostersFrame.TFrame")
+        self.canvas_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(10, 0))
 
-        # 加载海报
-        self.load_posters(self.movies_data)
+        # 创建Canvas和垂直滚动条
+        self.canvas = tk.Canvas(self.canvas_frame, bg="#1E1E1E", highlightthickness=0)
 
-    def load_posters(self, movies):
+        # 修改：隐藏滚动条但保留功能
+        self.scrollbar = ttk.Scrollbar(self.canvas_frame, orient="vertical", command=self.canvas.yview)
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        # 隐藏滚动条
+        # self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # 创建海报内容框架
+        self.posters_frame = ttk.Frame(self.canvas, style="PostersFrame.TFrame")
+        self.posters_window = self.canvas.create_window((0, 0), window=self.posters_frame, anchor="nw")
+
+        # 绑定事件处理滚动和调整大小
+        self.posters_frame.bind("<Configure>", self.on_posters_frame_configure)
+        self.canvas.bind("<Configure>", self.on_canvas_configure)
+
+        # 绑定鼠标滚轮事件
+        self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
+
+        # 底部导航栏 - 分页控制
+        self.bottom_nav = ttk.Frame(self.root, style="SearchFrame.TFrame")
+        self.bottom_nav.pack(fill=tk.X, padx=20, pady=30)  # 进一步增加底部边距
+
+        # 上一页按钮
+        self.prev_btn = ttk.Button(self.bottom_nav, text="上一页", command=self.prev_page)
+        self.prev_btn.pack(side=tk.LEFT, padx=5)
+
+        # 页码标签
+        self.page_label = ttk.Label(self.bottom_nav, text="第 1 页", style="TitleLabel.TLabel")
+        self.page_label.pack(side=tk.LEFT, padx=20)
+
+        # 下一页按钮
+        self.next_btn = ttk.Button(self.bottom_nav, text="下一页", command=self.next_page)
+        self.next_btn.pack(side=tk.LEFT, padx=5)
+
+    def on_window_resize(self, event):
+        """窗口大小变化时重新计算每行显示的海报数量并刷新"""
+        # 防止重复调用
+        if event and event.widget == self.root:
+            # 延迟执行，避免频繁刷新
+            self.root.after(100, self._delayed_load_posters)
+
+    def on_canvas_configure(self, event):
+        """当Canvas大小变化时，调整内部窗口宽度"""
+        # 仅在宽度变化时调整
+        if hasattr(self, 'posters_window'):
+            self.canvas.itemconfig(self.posters_window, width=event.width)
+
+            # 延迟执行，避免频繁刷新
+            self.root.after(100, self._delayed_load_posters)
+
+    def _delayed_load_posters(self):
+        """延迟加载海报，避免频繁调用"""
+        # 防止在窗口调整过程中多次调用
+        if not hasattr(self, '_load_pending') or not self._load_pending:
+            self._load_pending = True
+            self.calculate_movies_per_page()
+            self.load_posters()
+            self._load_pending = False
+
+    def calculate_movies_per_page(self):
+        """计算每页可显示的电影数量，固定为3行"""
+        # 获取Canvas实际宽度
+        canvas_width = self.canvas.winfo_width()
+        if canvas_width <= 0:
+            canvas_width = 1000  # 默认宽度，防止计算错误
+
+        # 计算每行可显示的海报数量（海报宽度180 + 左右边距各5）
+        cols = max(1, canvas_width // 190)  # 至少显示1列
+
+        # 固定行数为3
+        rows = 3
+
+        # 计算每页显示的电影数量
+        self.movies_per_page = rows * cols
+
+    def on_posters_frame_configure(self, event):
+        """当海报框架大小变化时，更新Canvas的滚动区域"""
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+
+        # 更新Canvas内部窗口宽度
+        self.canvas.itemconfig(self.posters_window, width=event.width)
+
+    def on_mousewheel(self, event):
+        """处理鼠标滚轮事件"""
+        if self.canvas_frame.winfo_containing(event.x_root, event.y_root) == self.canvas:
+            self.canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+    def load_posters(self):
+        """根据当前页和每页显示数量加载海报"""
+        # 获取Canvas的可用宽度
+        canvas_width = self.canvas.winfo_width()
+        if canvas_width <= 0:
+            canvas_width = 1000  # 默认宽度，防止计算错误
+
+        # 计算每页可显示的电影数量
+        self.calculate_movies_per_page()
+
+        # 确保每页显示的电影数量至少为1
+        if self.movies_per_page <= 0:
+            self.movies_per_page = 1
+
+        # 获取当前页的电影数据
+        start_idx = (self.current_page - 1) * self.movies_per_page
+        end_idx = start_idx + self.movies_per_page
+        current_movies = self.movies_data[start_idx:end_idx]
+
         # 清空现有内容
         for widget in self.posters_frame.winfo_children():
             widget.destroy()
@@ -116,9 +235,27 @@ class MovieLibraryApp:
         # 创建一个列表来存储所有海报图片的引用，防止被垃圾回收
         self.poster_images = []
 
-        # 重新加载所有电影海报
-        cols = 7
-        for index, movie in enumerate(movies):
+        # 计算总页数
+        total_pages = max(1, (len(self.movies_data) + self.movies_per_page - 1) // self.movies_per_page)
+
+        # 更新分页控制
+        self.update_pagination(total_pages)
+
+        # 重新加载当前页的电影海报
+        if not current_movies:
+            # 如果当前页没有电影，显示提示信息
+            no_movies_label = ttk.Label(
+                self.posters_frame,
+                text="没有找到电影",
+                style="TitleLabel.TLabel"
+            )
+            no_movies_label.grid(row=0, column=0, padx=20, pady=20)
+            return
+
+        # 确保每行至少有1列
+        cols = max(1, canvas_width // 190)  # 每行显示的海报数量
+
+        for index, movie in enumerate(current_movies):
             row = index // cols
             col = index % cols
 
@@ -127,7 +264,7 @@ class MovieLibraryApp:
 
             if poster_photo:
                 # 创建固定大小的海报框架
-                poster_frame = ttk.Frame(self.posters_frame, style="PosterFrame.TFrame", width=180, height=230)  # 调整宽度为海报宽度
+                poster_frame = ttk.Frame(self.posters_frame, style="PosterFrame.TFrame", width=180, height=260)  # 进一步增加高度
                 poster_frame.grid(row=row, column=col, padx=5, pady=5)
                 poster_frame.grid_propagate(False)  # 防止框架根据内容调整大小
 
@@ -152,19 +289,20 @@ class MovieLibraryApp:
 
                 # 主演信息容器
                 stars_container = ttk.Frame(poster_frame, style="PosterFrame.TFrame", height=30)
-                stars_container.pack(side=tk.TOP, fill=tk.X, pady=1)
+                stars_container.pack(side=tk.TOP, fill=tk.X, pady=2)  # 增加边距
                 stars_container.pack_propagate(False)  # 防止容器根据内容调整大小
 
                 # 主演信息标签
                 stars_text = movie.get("stars", "")
-                stars_label = ttk.Label(stars_container, text=stars_text if len(stars_text) <= 15 else stars_text[:15] + "...",
-                                       style="StarsLabel.TLabel", wraplength=180)  # 设置为海报宽度
+                stars_label = ttk.Label(stars_container,
+                                        text=stars_text if len(stars_text) <= 15 else stars_text[:15] + "...",
+                                        style="StarsLabel.TLabel", wraplength=180)  # 设置为海报宽度
                 stars_label.pack(fill=tk.BOTH, expand=True)
 
                 # 显示评分星级
                 level = int(float(movie["level"])) if movie["level"] else 0
                 stars_frame = ttk.Frame(poster_frame, style="PosterFrame.TFrame")
-                stars_frame.pack(side=tk.TOP, pady=2, anchor=tk.W)
+                stars_frame.pack(side=tk.TOP, pady=5, anchor=tk.W)  # 增加边距
 
                 # 存储星星组件引用，用于后续更新
                 movie["star_widgets"] = []
@@ -174,11 +312,11 @@ class MovieLibraryApp:
                         star_label = ttk.Label(stars_frame, image=self.STAR_FILLED if i < level else self.STAR_EMPTY)
                         star_label.image = self.STAR_FILLED if i < level else self.STAR_EMPTY
                     else:
-                        # 使用文本星星，与movie_add.py保持一致的样式
+                        # 使用文本星星
                         star_label = ttk.Label(stars_frame, text="★" if i < level else "☆",
-                                              foreground="#FFD700" if i < level else "#AAAAAA",
-                                              font=("Helvetica", 14))
-                    # 添加星星之间的间距，与movie_add.py保持一致
+                                               foreground="#FFD700" if i < level else "#AAAAAA",
+                                               font=("Helvetica", 14))
+                    # 添加星星之间的间距
                     star_label.pack(side=tk.LEFT, padx=2)
                     movie["star_widgets"].append(star_label)
 
@@ -196,8 +334,10 @@ class MovieLibraryApp:
                 if os.path.exists(DEFAULT_POSTER):
                     poster_path = DEFAULT_POSTER
                 else:
-                    print("默认海报也不存在!")
-                    return None
+                    # 创建默认海报
+                    img = Image.new('RGB', (120, 180), color=(50, 50, 50))
+                    img.save(DEFAULT_POSTER)
+                    poster_path = DEFAULT_POSTER
 
             # 打开图片
             img = Image.open(poster_path).convert('RGB')
@@ -206,33 +346,15 @@ class MovieLibraryApp:
             target_width = 180
             target_height = 120
 
-            # 计算宽高比
-            aspect_ratio = img.width / img.height
+            # 调整图片大小并居中
+            img.thumbnail((target_width, target_height), Image.Resampling.LANCZOS)
 
-            # 计算等比例缩小后的尺寸
-            if img.width > target_width or img.height > target_height:
-                if img.width / target_width > img.height / target_height:
-                    new_width = target_width
-                    new_height = int(new_width / aspect_ratio)
-                else:
-                    new_height = target_height
-                    new_width = int(new_height * aspect_ratio)
-            else:
-                new_width = img.width
-                new_height = img.height
-
-            # 调整图片大小
-            resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-            # 创建一个空白的目标大小的图片
+            # 创建背景
             final_img = Image.new('RGB', (target_width, target_height), color=(50, 50, 50))
 
-            # 计算居中位置
-            x_offset = (target_width - new_width) // 2
-            y_offset = (target_height - new_height) // 2
-
-            # 将调整后的图片粘贴到空白图片上
-            final_img.paste(resized_img, (x_offset, y_offset))
+            # 居中放置图片
+            position = ((target_width - img.width) // 2, (target_height - img.height) // 2)
+            final_img.paste(img, position)
 
             photo = ImageTk.PhotoImage(final_img)
 
@@ -242,61 +364,57 @@ class MovieLibraryApp:
 
         except Exception as e:
             print(f"Error loading poster {poster_path}: {e}")
-            # 如果加载出错，尝试加载默认海报
-            try:
-                img = Image.open(DEFAULT_POSTER).convert('RGB')
+            return None
 
-                # 目标尺寸
-                target_width = 180  # 保持与海报宽度一致
-                target_height = 120
+    def update_pagination(self, total_pages):
+        """更新分页控制"""
+        # 更新页码标签
+        self.page_label.config(text=f"第 {self.current_page} 页，共 {total_pages} 页")
 
-                # 计算宽高比
-                aspect_ratio = img.width / img.height
+        # 启用/禁用上一页按钮
+        if self.current_page <= 1:
+            self.prev_btn.config(state=tk.DISABLED)
+        else:
+            self.prev_btn.config(state=tk.NORMAL)
 
-                # 计算等比例缩小后的尺寸
-                if img.width > target_width or img.height > target_height:
-                    if img.width / target_width > img.height / target_height:
-                        new_width = target_width
-                        new_height = int(new_width / aspect_ratio)
-                    else:
-                        new_height = target_height
-                        new_width = int(new_height * aspect_ratio)
-                else:
-                    new_width = img.width
-                    new_height = img.height
+        # 启用/禁用下一页按钮
+        if self.current_page >= total_pages:
+            self.next_btn.config(state=tk.DISABLED)
+        else:
+            self.next_btn.config(state=tk.NORMAL)
 
-                # 调整图片大小
-                resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    def prev_page(self):
+        """显示上一页"""
+        if self.current_page > 1:
+            self.current_page -= 1
+            self.load_posters()
 
-                # 创建一个空白的目标大小的图片
-                final_img = Image.new('RGB', (target_width, target_height), color=(50, 50, 50))
-
-                # 计算居中位置
-                x_offset = (target_width - new_width) // 2
-                y_offset = (target_height - new_height) // 2
-
-                # 将调整后的图片粘贴到空白图片上
-                final_img.paste(resized_img, (x_offset, y_offset))
-
-                photo = ImageTk.PhotoImage(final_img)
-                self.poster_images.append(photo)
-                return photo
-            except Exception as e2:
-                print(f"Error loading default poster: {e2}")
-                return None
+    def next_page(self):
+        """显示下一页"""
+        total_pages = (len(self.movies_data) + self.movies_per_page - 1) // self.movies_per_page
+        if self.current_page < total_pages:
+            self.current_page += 1
+            self.load_posters()
 
     def search_movies(self):
+        """搜索电影"""
         keyword = self.search_entry.get().lower()
         filtered = [m for m in self.movies_data
                     if keyword in m["title"].lower() or
                     keyword in m["stars"].lower() or
                     keyword in m["director"].lower()]
-        self.load_posters(filtered)
+
+        # 重置分页状态
+        self.current_page = 1
+        self.movies_data = filtered
+        self.load_posters()
 
     def show_movie_detail(self, movie):
+        """显示电影详情"""
         MovieDetailWindow(self, movie, self.update_level, self.save_movies_data)
 
     def update_level(self, movie, new_level):
+        """更新电影评分"""
         # 更新电影数据
         movie["level"] = str(new_level)
 
@@ -308,7 +426,7 @@ class MovieLibraryApp:
                     star.image = self.STAR_FILLED if i < new_level else self.STAR_EMPTY
                 else:
                     star.config(text="★" if i < new_level else "☆",
-                               foreground="#FFD700" if i < new_level else "#AAAAAA")
+                                foreground="#FFD700" if i < new_level else "#AAAAAA")
 
         # 保存更新后的电影数据到文件
         self.save_movies_data()
@@ -316,13 +434,19 @@ class MovieLibraryApp:
         messagebox.showinfo("提示", f"已将《{movie['title']}》的评分更新为{new_level}星")
 
     def show_add_movie_window(self):
+        """显示添加电影窗口"""
         # 延迟导入以避免循环依赖
         from movie_add import AddMovieWindow
         AddMovieWindow(self.root, self.add_movie)
 
     def add_movie(self, new_movie):
+        """添加新电影"""
         self.movies_data.append(new_movie)
-        self.load_posters(self.movies_data)
+
+        # 重置分页状态
+        self.current_page = 1
+        self.load_posters()
+
         messagebox.showinfo("提示", "影片添加成功")
         print(f"添加新电影: {new_movie['title']}")
 
@@ -395,8 +519,13 @@ class MovieLibraryApp:
     def delete_movie(self, movie):
         # 从电影数据列表中删除该电影
         self.movies_data = [m for m in self.movies_data if m != movie]
+
+        # 重置分页状态
+        self.current_page = 1
+
         # 重新加载海报
-        self.load_posters(self.movies_data)
+        self.load_posters()
+
         # 保存更新后的电影数据到文件
         self.save_movies_data()
         messagebox.showinfo("提示", f"已删除《{movie['title']}》")
