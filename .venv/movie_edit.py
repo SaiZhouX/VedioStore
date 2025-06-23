@@ -6,17 +6,14 @@ import datetime
 
 
 class EditMovieWindow:
-    def __init__(self, parent, movie, update_movie_callback):
+    def __init__(self, parent, frame, movie, update_movie_callback):
         self.parent = parent
         self.movie = movie
         self.update_movie_callback = update_movie_callback
         self.current_level = int(float(movie["level"])) if movie["level"] else 0  # 初始化评分
 
-        self.window = tk.Toplevel(parent)
-        self.window.title("修改影片")
-        # 增加窗口高度以容纳剧情简介
-        self.window.geometry("400x500")
-        self.window.configure(bg="#1E1E1E")
+        self.window = frame
+        # self.window.configure(bg="#1E1E1E")
 
         # 加载星星图片
         STAR_EMPTY_PATH = os.path.join("posters", "star_empty.png")
@@ -129,4 +126,6 @@ class EditMovieWindow:
         }
 
         self.update_movie_callback(updated_movie)
-        self.window.destroy()
+        # 关闭当前标签页
+        index = self.parent.notebook.index(self.window)
+        self.parent.notebook.forget(index)

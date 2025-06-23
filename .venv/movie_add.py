@@ -8,15 +8,13 @@ MOVIES_FILE = os.path.abspath("movies.json")  # 使用绝对路径
 
 
 class AddMovieWindow:
-    def __init__(self, parent, add_movie_callback):
+    def __init__(self, parent, frame, add_movie_callback):
         self.parent = parent
         self.add_movie_callback = add_movie_callback
         self.current_level = 0  # 初始化评分为0
 
-        self.window = tk.Toplevel(parent)
-        self.window.title("添加影片")
-        self.window.geometry("400x550")  # 增加窗口高度，确保按钮可见
-        self.window.configure(bg="#1E1E1E")
+        self.window = frame
+        # self.window.configure(bg="#1E1E1E")
 
         # 加载星星图片
         self.load_star_images()
@@ -141,4 +139,6 @@ class AddMovieWindow:
         }
 
         self.add_movie_callback(new_movie)
-        self.window.destroy()    
+        # 关闭当前标签页
+        index = self.parent.notebook.index(self.window)
+        self.parent.notebook.forget(index)

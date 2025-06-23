@@ -4,6 +4,8 @@ from PIL import Image, ImageTk
 import os
 import json
 from movie_detail import MovieDetailWindow
+from movie_add import AddMovieWindow
+from movie_edit import EditMovieWindow
 
 # 电影数据存储文件
 MOVIES_FILE = os.path.abspath("movies.json")  # 使用绝对路径
@@ -70,6 +72,14 @@ class MovieLibraryApp:
         self.posters_frame_width = 0  # 海报区域宽度
         self._load_pending = False  # 防止重复加载
 
+        # 创建 Notebook 用于管理标签页
+        self.notebook = ttk.Notebook(self.root)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+
+        # 主页面框架
+        self.main_frame = ttk.Frame(self.notebook, style="PostersFrame.TFrame")
+        self.notebook.add(self.main_frame, text="主页面")
+
         # 界面组件
         self.create_ui()
 
@@ -97,7 +107,7 @@ class MovieLibraryApp:
 
     def create_ui(self):
         # 顶部操作栏 - 添加影片按钮和搜索框
-        top_bar = ttk.Frame(self.root, style="SearchFrame.TFrame")
+        top_bar = ttk.Frame(self.main_frame, style="SearchFrame.TFrame")
         top_bar.pack(pady=10, fill=tk.X, padx=20)
 
         # 添加影片按钮
@@ -115,7 +125,7 @@ class MovieLibraryApp:
         self.search_btn.pack(side=tk.LEFT, padx=5)
 
         # 海报墙框架 - 使用Canvas实现滚动
-        self.canvas_frame = ttk.Frame(self.root, style="PostersFrame.TFrame")
+        self.canvas_frame = ttk.Frame(self.main_frame, style="PostersFrame.TFrame")
         self.canvas_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=(10, 0))
 
         # 创建Canvas和垂直滚动条
@@ -141,7 +151,7 @@ class MovieLibraryApp:
         self.canvas.bind_all("<MouseWheel>", self.on_mousewheel)
 
         # 底部导航栏 - 分页控制
-        self.bottom_nav = ttk.Frame(self.root, style="SearchFrame.TFrame")
+        self.bottom_nav = ttk.Frame(self.main_frame, style="SearchFrame.TFrame")
         self.bottom_nav.pack(fill=tk.X, padx=20, pady=30)  # 进一步增加底部边距
 
         # 上一页按钮
@@ -411,7 +421,10 @@ class MovieLibraryApp:
 
     def show_movie_detail(self, movie):
         """显示电影详情"""
-        MovieDetailWindow(self, movie, self.update_level, self.save_movies_data)
+        detail_frame = ttk.Frame(self.notebook)
+        MovieDetailWindow(self, detail_frame, movie, self.update_level, self.save_movies_data)
+        self.notebook.add(detail_frame, text=movie["title"])
+        self.notebook.select(detail_frame)
 
     def update_level(self, movie, new_level):
         """更新电影评分"""
@@ -435,9 +448,10 @@ class MovieLibraryApp:
 
     def show_add_movie_window(self):
         """显示添加电影窗口"""
-        # 延迟导入以避免循环依赖
-        from movie_add import AddMovieWindow
-        AddMovieWindow(self.root, self.add_movie)
+        add_frame = ttk.Frame(self.notebook)
+        AddMovieWindow(self, add_frame, self.add_movie)
+        self.notebook.add(add_frame, text="添加影片")
+        self.notebook.select(add_frame)
 
     def add_movie(self, new_movie):
         """添加新电影"""

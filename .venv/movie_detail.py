@@ -5,16 +5,14 @@ import os
 
 
 class MovieDetailWindow:
-    def __init__(self, parent, movie, update_level_callback, save_data_callback):
+    def __init__(self, parent, frame, movie, update_level_callback, save_data_callback):
         self.parent = parent
         self.movie = movie
         self.update_level_callback = update_level_callback
         self.save_data_callback = save_data_callback
 
-        self.window = tk.Toplevel(parent.root)
-        self.window.title(movie["title"])
-        self.window.geometry("840x1200")  # 增加一些宽度以容纳滚动条
-        self.window.configure(bg="#1E1E1E")
+        self.window = frame
+        # self.window.configure(bg="#1E1E1E")
 
         # 创建主框架
         main_frame = ttk.Frame(self.window, style="InfoFrame.TFrame")
@@ -116,17 +114,24 @@ class MovieDetailWindow:
         if confirm:
             # 调用主窗口的删除方法
             self.parent.delete_movie(self.movie)
-            self.window.destroy()
+            # 关闭当前标签页
+            index = self.parent.notebook.index(self.window)
+            self.parent.notebook.forget(index)
 
     def show_edit_movie_window(self):
+        edit_frame = ttk.Frame(self.parent.notebook)
         from movie_edit import EditMovieWindow
-        EditMovieWindow(self.window, self.movie, self.update_movie)
+        EditMovieWindow(self.parent, edit_frame, self.movie, self.update_movie)
+        self.parent.notebook.add(edit_frame, text=f"修改 {self.movie['title']}")
+        self.parent.notebook.select(edit_frame)
 
     def update_movie(self, updated_movie):
         index = next((i for i, m in enumerate(self.parent.movies_data) if m["title"] == self.movie["title"]), None)
         if index is not None:
             self.parent.movies_data[index] = updated_movie
-            self.parent.load_posters(self.parent.movies_data)
+            self.parent.load_posters()
             self.save_data_callback()
             messagebox.showinfo("提示", "影片信息更新成功")
-            self.window.destroy()
+            # 关闭当前标签页
+            index = self.parent.notebook.index(self.window)
+            self.parent.notebook.forget(index)
